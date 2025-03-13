@@ -77,11 +77,11 @@ needed.
 ## Generate trimmed fastq files
 
 For each RIL-seq workflow (`workflows/rilseq-2016` and
-`workfloes/rilseq-2020`), move to the corresponding directory and run the
+`workflows/rilseq-2020`), move to the corresponding directory and run the
 `Snakefile-rnaseq` workflow. This will create cutadapt-trimmed FASTQ files, as
 well as run extensive QC that is summarized in the respective
 `data/rnaseq_aggregation/multiqc.html` file. However, subsequent steps below
-only need the trimmed FASTQ files, so this workflow be optionally run in
+only need the trimmed FASTQ files, so this workflow can be optionally run in
 a truncated form to stop as soon as those required files are created:
 
 ```bash
@@ -91,7 +91,7 @@ a truncated form to stop as soon as those required files are created:
 snakemake --cores $CORES -s Snakefile-rnaseq --until cutadapt
 
 # or run entire workflow to get all QC
-snakemake --cores={number_cores_to_use} -s Snakefile-rnaseq
+snakemake --cores=$CORES -s Snakefile-rnaseq
 
 ```
 
@@ -111,7 +111,7 @@ conda activate ../../env-rilseq
 snakemake --cores $CORES -s Snakefile-rilseq
 ```
 
-The main output of this workflow are the `all_fragments` and
+The main outputs of this workflow are the `all_fragments` and
 `significant_fragments` files, stored in
 `data/rnaseq_rilseq/{sample}/{sample}_all_fragments.txt` and
 `data/rnaseq_rilseq/{sample}/{sample}_significant_fragments.txt`. These are
@@ -137,6 +137,7 @@ Rscript -e "rmarkdown::render('summary.Rmd')"
 Rscript -e "rmarkdown::render('cds-shrink.Rmd')"
 ```
 
-The output will be an HTML file named after the RMarkdown file (here,
-`workflows/rilseq-2016/downstream-log-noCL/summary.html` and
-`workflows/rilseq-2016/downstream-log-noCL/cds-shrink.html` ).
+The output will be an HTML file named after the respective RMarkdown file
+(here, `workflows/rilseq-2016/downstream-log-noCL/summary.html` and
+`workflows/rilseq-2016/downstream-log-noCL/cds-shrink.html`). These will also
+create Excel files with the summarized RIL-seq results.
