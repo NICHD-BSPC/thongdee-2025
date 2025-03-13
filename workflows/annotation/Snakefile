@@ -1,0 +1,327 @@
+import yaml
+import pandas as pd
+import pybedtools
+import csv
+import numpy as np
+import gffutils
+import re
+
+configfn = 'config/config.yaml'
+config = yaml.safe_load(open(configfn))
+
+# ----------------------------------------------------------------------------
+# RULES
+# ----------------------------------------------------------------------------
+
+
+final_targets = [
+    'data/ecoli_default.patch1.gff',
+    'data/ecoli_default.patch1.exononly.gff',
+]
+
+rule targets:
+    """
+    Final targets to create
+    """
+    input:
+        final_targets
+
+
+def parse_descr(dfcol, field):
+    """
+    dfcol: description column to parse in GFF
+    field: name of field to extract in description
+    format example: gene_id "EG11277"; gene_name "thrL";
+    """
+    dfcol = dfcol.str.split(field + ' "', expand=True)
+    dfcol = dfcol[1].str.split('";', expand=True)[0]
+    return(dfcol)
+
+def my_csv(df, outfn):
+    df.to_csv(outfn,
+        sep='\t',
+        header = False,
+        index=False,
+        quoting=csv.QUOTE_NONE)
+
+
+def check_coord_change(df, region, logfn=False):
+    """
+    check if coordinate changed,
+    apply change and modifiy 5UTR or 3UTR and TU
+    df: gff df with old and new coordinates
+    region: start or end
+    logfn: file to save the changes
+    """
+    col1 = region + '_p0'
+    col2 = region + '_p1'
+    opposite = 'end' if region == 'start' else 'start'
+    newcol = region + '_new'
+    coord_change_idx = (df[col1] != df[col2]) & \
+        ~df[col1].isna() & \
+        ~df[col2].isna()
+    # keep a record of coordinate changes
+    if logfn:
+        my_csv(df.loc[coord_change_idx,:], logfn)
+    # propagate eventual coordinate changes
+    df[newcol] = np.where(coord_change_idx,
+        df[col2],
+        df[col1])
+    # update corresponding adjacent feature
+    for idx in df.index[coord_change_idx]:
+        # original feature            ---------j
+        # adjacent feature                      j+1---------
+        # changed feature             -------------i
+        # new adjacent feature                      i+1-----
+        orig_coord = df.loc[idx, col1] +1 if region == 'end' else df.loc[idx, col1] -1
+        updt_coord = df.loc[idx, col2] +1 if region == 'end' else df.loc[idx, col2] -1
+        strand = df.loc[idx, 'strand_p0']
+        # affected adjacent UTR and TU features, on same strand (don't want to change mRNA, tRNA, rRNA, sRNA,
+        # ncRNA; IGR and TU will be dealt with later)
+        keep = ['5UTR', '3UTR', 'TU']
+        aff_idx = (df[opposite+'_p0'] == orig_coord) & (df['type'].isin(keep)) & (df['strand_p0'] == strand)
+        if sum(aff_idx > 0):
+            df.loc[aff_idx, opposite+'_new'] = updt_coord
+    return(df)
+
+
+def add_new_genes(df, logfn=False):
+    """
+    check for new genes (that are not in _p0)
+    and add them in 'start_new', 'end_new', 'strand_new'
+    """
+    new_gene_idx = df['start_p0'].isna() & \
+        ~df['start_p1'].isna()
+    # keep a record of coordinate changes
+    if logfn:
+        my_csv(df.loc[new_gene_idx,:], logfn)
+    # propagate eventual coordinate changes
+    for w in ['start', 'end', 'strand']:
+        df[w+'_new'] = np.where(new_gene_idx, df[w+'_p1'], df[w+'_new'])
+    # add the type
+    df['type'] = np.where(new_gene_idx, 'mRNA', df['type'])
+    df['type'] = np.where(new_gene_idx & df['gene_name'].str.contains('.IGR$'), 'IGR', df['type'])
+    df['type'] = np.where(new_gene_idx & df['gene_name'].str.contains('.5UTR$'), '5UTR', df['type'])
+    df['type'] = np.where(new_gene_idx & df['gene_name'].str.contains('.3UTR$'), '3UTR', df['type'])
+    return(df)
+
+
+def update_antisense(df, logfn=False):
+    """
+    takes all mRNAs and TUs
+    and makes an AS with same coordinates
+    """
+    # if existing AS, if match previous mRNA coordinate and it changed, change it
+    # if existing AS and previous coord did not match, that was experimentally found, do not change it
+    as_idx = df['type'] == 'AS'
+    for idx in df.index[as_idx]:
+        # start and end coords of the AS
+        start_i, end_i = df.loc[idx, ['start_p0', 'end_p0']]
+        # are there sense that match the criteria?
+        #   1. coordinates match AS - sense
+        #   2. opposite strand
+        #   3. sense coords start or end have changed
+        #   4. found in p1
+        aff_idx = (df['start_p0'] == start_i) & (df['end_p0'] == end_i) & \
+            (df['strand_p0'] != df.loc[idx, 'strand_p0']) & \
+            ( (df['start_p0'] != df['start_p1']) | (df['end_p0'] != df['end_p1'])) & \
+            (~df['start_p1'].isna())
+        if sum(aff_idx) > 0:
+            df.loc[idx, ['start_new', 'end_new']] = df.loc[df.index[aff_idx][0], ['start_new', 'end_new']]
+
+    # if new gene: make AS with same coords;
+    # all entries in p1 need to be considered as gene
+    new_gene_idx = df['start_p0'].isna() & \
+        ~df['start_p1'].isna()
+    new_as_df = df.loc[new_gene_idx,:]
+    new_as_df['type'] = 'AS'
+    new_as_df['feature'] = 'AS'
+    new_as_df['gene_id'] = new_as_df['gene_id'] + '.AS'
+    new_as_df['gene_name'] = new_as_df['gene_name'] + '.AS'
+    new_as_df['strand_new'] = np.where(new_as_df['strand_new'] == '+', '-', '+')
+    df = pd.concat((df, new_as_df), ignore_index=True)
+    return(df)
+
+
+def make_gene_dict(df, strand, where, fai):
+    # subset to strand
+    dfsub = df.loc[ df['strand_new'] == strand, :]
+    # convert the gene names with .5UTR,... to their CDS
+    # by deleting anything after the last '.'
+    dfsub['short_name'] = dfsub['gene_name'].str.replace(r'\.\w+$', '')
+    gene_dict = dict(zip(dfsub[where].astype(str), dfsub['short_name']))
+    # manually add the '0' entry with last gene on chromosome, because E. coli chr is circular
+    # and last position with first gene
+    gene_dict['0'] = dfsub.sort_values(by=['start_new'])['short_name'].iloc[-1]
+    gene_dict[str(fai['chr'][1])] = dfsub.sort_values(by=['start_new'])['short_name'].iloc[0]
+    return(gene_dict)
+
+
+def make_complement(df, gene_dict, strd, faifn, bed_cols):
+    """
+    make complement of intervals
+    to make the IGR intervals
+    add the name based on strand-specific upstream and downstream genes
+    df: dataframe, intervals for mRNAs, UTR, TU, nc_RNAs, tRNAs, rRNAs, and AS
+    strd: str, strand + or -
+    faifn: pybedtools file name for genome index
+    bed_cols: name of columns to format df in BED
+    """
+    # pybedtools object for mRNA, UTR, AS, tRNAs,...
+    pbt_RNA = pybedtools.BedTool.from_dataframe(df[bed_cols]).sort()
+    comp_df = pbt_RNA.filter(lambda a: a.strand == strd).complement(g=faifn).to_dataframe()
+    comp_df.columns = ['chrom', 'start_new', 'end_new']
+    comp_df[['type', 'score', 'strand_new']] = ['IGR', '.', strd]
+    # the coordinates were GFF, 1-based, shift by 1 the extremities, and remove empty IGRs
+    comp_df['start_new'] = comp_df['start_new'] + 1
+    comp_df['end_new'] = comp_df['end_new'] - 1
+    comp_df = comp_df.loc[ comp_df['start_new'] < comp_df['end_new'],:]
+    # make name, up_gene refers to upstream on + strand, downstream on - strand
+    if strd == '+':
+        comp_df['up_gene'] = [gene_dict[strd]['up'][str(x)] for x in (comp_df['start_new'] - 1)]
+        comp_df['dn_gene'] = [gene_dict[strd]['dn'][str(x)] for x in (comp_df['end_new'] + 1)]
+    elif strd == '-':
+        # if (-) strand, need to use the end_new for upstream
+        comp_df['up_gene'] = [gene_dict[strd]['up'][str(x)] for x in (comp_df['end_new'] + 1)]
+        comp_df['dn_gene'] = [gene_dict[strd]['dn'][str(x)] for x in (comp_df['start_new'] - 1)]
+    comp_df['gene_name'] = comp_df['up_gene'] + '.' + comp_df['dn_gene'] + '.IGR'
+    return(comp_df)
+
+
+def fill_in_igr(df, logfn=False):
+    # recalculate the IGR
+    bed_cols = ['chrom', 'start_new', 'end_new', 'gene_name', 'score', 'strand_new']
+    df['chrom'] = 'chr'
+    df['score'] = '.'
+    # need integer coordinates for bedtools
+    df['start_new'] = df['start_new'].astype(int)
+    df['end_new'] = df['end_new'].astype(int)
+    # store the existing IGR, to compare later, keep non-IGR or IGR if also has 'exon' feature
+    old_igr = df.loc[ df['type'].isin(['IGR']), bed_cols]
+    my_csv(old_igr, 'data/original_IGR.tsv')
+    df = df.loc[ (~df['type'].isin(['IGR'])) | (df['feature'] == 'exon'),:]
+    # bedtools complement -i <BED/GFF/VCF> -g <GENOME> to get any region NOT covered by a feature
+    # - determine the genome
+    fai = {'chr': (0, int(max(df['end_new'])))}
+    faifn = pybedtools.helpers.chromsizes_to_file(fai)
+    # - make dict of start-or-end_position: gene_name
+    # ------------up-->IGR>-dn-------------  (+)
+    # ----------->end>----->start>---------  (+)
+    # ------------dn--<IGR<-up-------------  (-)
+    # -----------<end<-----<start<---------  (-)
+    gene_dict = {'+': {'up': make_gene_dict(df, '+', 'end_new', fai),
+                       'dn': make_gene_dict(df, '+', 'start_new', fai)
+                       },
+                 '-': {'up': make_gene_dict(df, '-', 'start_new', fai),
+                       'dn': make_gene_dict(df, '-', 'end_new', fai)
+                       },
+                 }
+    # - bedtools complement on each strand
+    pos_igr = make_complement(df, gene_dict, '+', faifn, bed_cols)
+    neg_igr = make_complement(df, gene_dict, '-', faifn, bed_cols)
+    # - add to the gff df
+    df = df.append(pos_igr).append(neg_igr)
+    df = df.sort_values(by=['start_new', 'type'])
+    return(df)
+
+def update_meta(df, sourcename = 'this_study'):
+    # update description field
+    df['gene_id'] = np.where(df['gene_id'].isna(), df['gene_name'], df['gene_id'])
+    df['source'] = np.where(df['source'].isna(), sourcename, df['source'])
+    df['description'] =  'gene_id "' + df['gene_id'] + \
+                                  '"; gene_name "' + df['gene_name'] + \
+                                  '"; type "' + df['type'] + '";'
+    # feature column with 'exon' for RNAs to be quantified in DESeq, or type for others (UTRs,...)
+    df['feature'] = np.where(df['feature'].isna(), df['type'], df['feature'])
+    return(df)
+
+
+rule patch1:
+    """
+    take the patch0 GFF and add info from patch1 file
+    patch1 file contains list of sRNAs IDs
+    """
+    input:
+        p0 = config['patch0']['file'],
+        p1 = config['patch1']['file']
+    output:
+        gff = 'data/ecoli_default.patch1.gff',
+    log:
+        'logs/patch1.log'
+    run:
+        # read inputs
+        p0 = pd.read_table(input.p0, sep='\t', header=None)
+        p0.columns = ['chrom', 'source', 'type', 'start', 'end',
+                      'score', 'strand', 'na', 'description']
+        p0['gene_name'] = parse_descr(p0['description'], 'gene_name')
+        p0['gene_id'] = parse_descr(p0['description'], 'gene_id')
+        p1 = pd.read_table(input.p1, sep='\t', header=None)
+        p1.columns = ['chrom', 'start', 'end', 'description',
+                      'score', 'strand']
+        p1['gene_name'] = parse_descr(p1['description'], 'gene_name')
+        p1['gene_id'] = parse_descr(p1['description'], 'gene_id')
+
+        # set feature to exon to merge with p1 and source
+        p1['type'] = 'exon'
+        p1['source'] = 'Adams et al., 2020'
+
+        # merge
+        gff_upd = p0.append(p1)
+        # match column names for the functions
+        gff_upd['strand_new'] = gff_upd['strand']
+        # all are new genes, there was no AS before
+        gff_upd['start_p1'] = gff_upd['start']
+        gff_upd['start_p0'] = np.NaN
+        gff_upd['start_new'] = gff_upd['start']
+        gff_upd['end_new'] = gff_upd['end']
+
+        # check changes and update accordingly, see rule patch1 for comments
+        gff_upd = update_antisense(gff_upd)
+        gff_upd = fill_in_igr(gff_upd)
+        gff_upd = update_meta(gff_upd)
+
+        # set the type to sRNA in the description
+        p1_idx = gff_upd['source'] == 'Adams et al., 2020'
+        gff_upd['description'] = np.where(p1_idx,
+                                          gff_upd['description'].str.replace(r'type "\w+";', 'type "sRNA";'),
+                                          gff_upd['description'])
+
+        # save GFF
+        gff_cols = ['chrom', 'source', 'feature', 'start_new', 'end_new', 'score',
+                      'strand_new', 'score', 'description']
+        gff_upd = gff_upd.drop_duplicates(subset = gff_cols)
+        gff_upd = gff_upd.sort_values(by=['start_new', 'end_new', 'type'])
+        my_csv(gff_upd[gff_cols], output.gff)
+
+
+def get_genedescr(gene_name_df, annot):
+    # parse the gene name in case there are more than 1 gene (i.e. IGRs have 2)
+    # and convert to the gene function description
+    gene_name_df = gene_name_df.str.split('.', expand=True)
+    for col_i in gene_name_df.columns:
+        gene_name_df[col_i] = [annot[x] if x in annot.keys() else np.nan for x in gene_name_df[col_i] ]
+    out = gene_name_df.apply(
+        lambda x: ':'.join(x.dropna().astype(str)),
+        axis=1
+        )
+    return(out)
+
+
+
+rule format_latest_for_comparison:
+    """
+    remove the non-exon entries to latest patch
+    so can easily compare with the original GTF
+    to spot check issues
+    """
+    input:
+        'data/ecoli_default.patch1.gff'
+    output:
+        'data/ecoli_default.patch1.exononly.gff'
+    run:
+        p = pd.read_table(input[0], sep='\t', header=None)
+        p.columns = ['chrom', 'source', 'feature', 'start', 'end', 'score',
+                      'strand', 'na', 'description']
+        p = p.loc[ p['feature'] == 'exon',:]
+        p['description'] = p['description'].str.replace(' type ".+', '', regex=True)
+        my_csv(p, output[0])
