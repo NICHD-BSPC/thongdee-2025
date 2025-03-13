@@ -14,9 +14,9 @@ configuration, supporting code, and downstream RMarkdown files are included.
 ## Requirements
 
 - [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html) must be installed
-- this code repository must be downloaded and unpacked. Below, we refer to this
-  directory as `$WORKDIR`. Unless otherwise specified, paths provided are
-  assumed to be relative to `$WORKDIR`.
+- this code repository must be downloaded and unpacked. Below, we refer to the
+  unpacked directory as `$WORKDIR`. Unless otherwise specified, paths provided
+  are assumed to be relative to `$WORKDIR`.
 
 ## Create conda environments
 
@@ -58,6 +58,8 @@ files, the entry `references:ecoli:default:annotation:url` points to this
 path by `file://../annotation/data/ecoli_default.patch1.gff`.
 
 ## Configure RIL-seq workflows
+
+There are two RIL-seq workflows, `rilseq-2016` and `rilseq-2020`. 
 
 If necessary, edit the sample tables in each of the dataset directories (the
 `config/sampletable.tsv` files, for example
