@@ -122,9 +122,14 @@ They need to be further processed to map the fragments to features. This
 workflow also generates the Circos plots of interactions, stored in
 `data/rnaseq_rilseq/{sample}/{sample}_circos_plot.svg`.
 
-Plots and tables summarizing the mapped fragments results are generated
-through downstream Rmarkdown scripts. Computation time takes several hours
-per condition; samples are processed in batches per conditions.
+
+## Render RMarkdown files
+
+Plots and tables summarizing the mapped fragments results are generated through
+downstream RMarkdown files rendered into HTML. Computation time takes several
+hours per condition. To support parallel execution, samples are processed in
+subgroups and have been split into multiple subdirectories differing only by
+the set of samples processed.
 
 Each RMarkdown file in the `workflows/rilseq-*/downstream-*` directories should
 be run in the `env-r` environment. Each directory has a `summary.Rmd` to be run
