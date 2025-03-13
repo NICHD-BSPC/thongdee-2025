@@ -1,0 +1,142 @@
+---
+title: CDS shrinking of RILseq analysis
+output:
+    html_document:
+        code_folding: hide
+        toc: true
+        toc_float: true
+        toc_depth: 3
+---
+
+```{r}
+subgroup <- 'Stationary_Phase_CL'
+```
+
+```{r global_options, include=FALSE}
+# Sets up global options for rendering RMarkdown into HTML.
+knitr::opts_chunk$set(
+    warning=FALSE,
+    message=FALSE,
+    cache.lazy = FALSE, # to fix error:
+                        # Error in lazyLoadDBinsertVariable(vars[i], from, datafile, ascii, compress,  :
+                        # long vectors not supported yet: connections.c:6074
+    cache.extra_file_dep_1 = file.info(
+      paste0('Summary_RILSeq_S-chimeras_2016_unified_', subgroup, '.xlsx')
+      )$mtime
+    )
+```
+
+
+```{r libraries}
+library(dplyr)
+library(DT)
+library(ggplot2)
+library(plotly)
+library(cowplot)
+# add genes
+library(rtracklayer)
+library(data.table)
+library(GenomicRanges)
+library(openxlsx)
+# functions
+#source('helpers.R')
+```
+
+```{r annot}
+# import annotation
+gtf_file <- '../../annotation/data/ecoli_default.patch1.gff'
+cat(paste0('\n\nAnnotation file is ', gtf_file, '.\n\n'))
+annotation <- import(gtf_file, format="GFF")
+
+# get the CDSs
+cds_lines <- which(annotation$type == "exon")
+CDS_annot <- annotation[cds_lines]
+
+CDS_shrink <- list()
+for (sz in c(50, 100)) {
+  # remove the CDS that will disapear after shrinking
+  cds_i_shrink <- CDS_annot[which(width(CDS_annot) > 2*sz)]
+  start(cds_i_shrink) <- start(cds_i_shrink) + sz
+  end(cds_i_shrink) <- end(cds_i_shrink) - sz
+
+  CDS_shrink[[as.character(sz)]] <- cds_i_shrink
+}
+```
+
+```{r read_unified, results='asis'}
+# read unified chimera data xlsx
+fn <- paste0('Summary_RILSeq_S-chimeras_2016_unified_', subgroup, '.xlsx')
+
+sig.unified <- list()
+sig.unified[['FLAG']] <- read.xlsx(fn, sheet=1)
+sig.unified[['noflag']] <- read.xlsx(fn, sheet=2)
+```
+
+```{r funcs}
+searchQualifiedChimeras <- function(chimera_table, genomic_range, chimera_member=1){
+  # chimera_table: df, from unified significant chimera xlsx
+  # genomic_range: Grange, i.e. CDS ranges of selected genes
+  # chimera_member: 1 or 2, for mapping RNA1 or RNA2
+  if(chimera_member == 1) {
+    RNA_col <- which(colnames(chimera_table) == "RNA1_name")
+    from_col <- which(colnames(chimera_table) == "Start.of.RNA1.first.read")
+    to_col <- which(colnames(chimera_table) == "Start.of.RNA1.last.read")
+    strand_col <- which(colnames(chimera_table) == "RNA1.strand")
+  } else if (chimera_member ==2) {
+    RNA_col <- which(colnames(chimera_table) == "RNA2_name");
+    from_col <- which(colnames(chimera_table) == "Start.of.RNA2.first.read");
+    to_col <- which(colnames(chimera_table) == "Start.of.RNA2.last.read");
+    strand_col <- which(colnames(chimera_table) == "RNA2.strand")
+  } else {
+    stop("chimera_member must be 1 or 2 (for RNA1 or RNA2)")
+  }
+
+  # Keep chimeras which RNA1 or RNA2 are included in 
+  # interested genomic_range only (no short RNAs)
+  RNA_name <- as.character(chimera_table[, RNA_col])
+  gene_match <- which(RNA_name %in% genomic_range$gene_name)
+  target_chimera <- chimera_table[gene_match,]
+
+  # Keep chimeras which RNA coordinates fall within  
+  # the genomic_range
+  chimera_RNA <- GRanges(seqnames="chr",
+                         ranges=IRanges(start=as.numeric(target_chimera[, from_col]),
+                           end=as.numeric(target_chimera[, to_col])),
+                           strand=as.character(target_chimera[, strand_col])
+  )
+
+  hits <- as.matrix(findOverlaps(chimera_RNA, genomic_range, type="within"))
+
+  if(nrow(hits)> 0) {
+    out_chimera <- target_chimera[hits[,1],]
+    out_RNA <- as.data.frame(genomic_range[hits[,2]])
+    out_table <- cbind(out_RNA, out_chimera)
+  } else {
+    out_table <- NULL
+  }
+
+  return (out_table)
+}
+```
+
+```{r match_chimeras, results='asis'}
+# for each shrink size
+for (sz in names(CDS_shrink)) {
+  fnout <- paste0('Summary_RILSeq_S-chimeras_2016_unified_', subgroup, '_CDSshrink', sz, '.xlsx')
+  wb <- openxlsx::createWorkbook()
+
+  #for FLAGged and noflagged sample,
+  for (nm in names(sig.unified)) {
+    chimera_cds_i <- searchQualifiedChimeras(sig.unified[[nm]],
+                                             chimera_member=1,
+                                             CDS_shrink[[sz]])
+
+    if(!is.null(chimera_cds_i)) {
+      openxlsx::addWorksheet(wb, nm)
+      openxlsx::writeData(wb, nm, x=chimera_cds_i, withFilter=TRUE)
+    }
+  }
+
+  openxlsx::saveWorkbook(wb, file=fnout, overwrite=TRUE)
+}
+```
