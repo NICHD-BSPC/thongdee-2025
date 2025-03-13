@@ -1,0 +1,71 @@
+chr	77367	77593	"gene_id ""G0-9941""; gene_name ""sgrS"";"	.	+
+chr	189712	189847	"gene_id ""G0-8895""; gene_name ""tff"";"	.	+
+chr	297137	297304	"gene_id ""G0-10738""; gene_name ""nc1"";"	.	-
+chr	458728	458784	"gene_id ""G0-8861""; gene_name ""sraA"";"	.	-
+chr	507204	507287	"gene_id ""G0-9382""; gene_name ""chiX"";"	.	+
+chr	686681	686843	"gene_id ""G0-9383""; gene_name ""sroC"";"	.	-
+chr	852725	853064	"gene_id ""G0-8881""; gene_name ""rybA"";"	.	-
+chr	887977	888057	"gene_id ""G0-8880""; gene_name ""rybB"";"	.	-
+chr	1146589	1146757	"gene_id ""G0-8862""; gene_name ""sraB"";"	.	+
+chr	1269858	1269923	"gene_id ""G0-9606""; gene_name ""rdlB"";"	.	+
+chr	1270393	1270460	"gene_id ""G0-9608""; gene_name ""rdlC"";"	.	+
+chr	1287066	1287236	"gene_id ""G0-9609""; gene_name ""rttR"";"	.	-
+chr	1405659	1405751	"gene_id ""G0-8899""; gene_name ""mcaS"";"	.	-
+chr	1409129	1409247	"gene_id ""G0-10677""; gene_name ""fnrS"";"	.	+
+chr	1437121	1437229	"gene_id ""G0-8901""; gene_name ""micC"";"	.	+
+chr	1491443	1491506	"gene_id ""G0-10592""; gene_name ""rydC"";"	.	-
+chr	1492119	1492174	"gene_id ""G0-9611""; gene_name ""sokB"";"	.	+
+chr	1622817	1622914	"gene_id ""G0-10671""; gene_name ""mgrR"";"	.	-
+chr	1649382	1649434	"gene_id ""EG31115""; gene_name ""dicF"";"	.	+
+chr	1670949	1671136	"gene_id ""G0-10698""; gene_name "" "";"	.	-
+chr	1764713	1764780	"gene_id ""G0-8876""; gene_name ""rydB"";"	.	-
+chr	1770372	1770476	"gene_id ""G0-8863""; gene_name ""rprA"";"	.	+
+chr	1923066	1923314	"gene_id ""G0-8865""; gene_name ""ryeA"";"	.	+
+chr	1923104	1923207	"gene_id ""G0-8883""; gene_name ""sdsR"";"	.	-
+chr	1958441	1958520	"gene_id ""G0-16601""; gene_name ""micL"";"	.	-
+chr	2025227	2025313	"gene_id ""G7047""; gene_name ""dsrA"";"	.	-
+chr	2033649	2033739	"gene_id ""G0-10574""; gene_name ""rseX"";"	.	+
+chr	2071317	2071511	"gene_id ""G0-8905""; gene_name ""isrC"";"	.	+
+chr	2153311	2153454	"gene_id ""G0-8884""; gene_name ""sibA"";"	.	+
+chr	2153646	2153781	"gene_id ""G0-8885""; gene_name ""sibB"";"	.	+
+chr	2167114	2167200	"gene_id ""G0-8878""; gene_name ""cyaR"";"	.	+
+chr	2278258	2278498	"gene_id ""G0-10700""; gene_name "" "";"	.	-
+chr	2313084	2313176	"gene_id ""EG30063""; gene_name ""micF"";"	.	+
+chr	2470472	2470665	"gene_id ""G0-16635""; gene_name ""ryeG"";"	.	-
+chr	2640595	2640686	"gene_id ""G0-9385""; gene_name ""sroE"";"	.	-
+chr	2653855	2654158	"gene_id ""G0-8879""; gene_name ""ryfA"";"	.	+
+chr	2691157	2691340	"gene_id ""G0-8910""; gene_name ""glmY"";"	.	-
+chr	2700520	2700596	"gene_id ""G0-10598""; gene_name ""ohsC"";"	.	+
+chr	2734153	2734295	"gene_id ""G0-10600""; gene_name ""ryfD"";"	.	-
+chr	2814802	2814873	"gene_id ""G0-8866""; gene_name ""micA"";"	.	+
+chr	2887353	2887408	"gene_id ""G0-10695""; gene_name ""sokX"";"	.	+
+chr	2924156	2924524	"gene_id ""G0-8785""; gene_name ""csrB"";"	.	-
+chr	2942696	2942900	"gene_id ""G0-8867""; gene_name ""gcvB"";"	.	+
+chr	2976102	2976189	"gene_id ""G0-8868""; gene_name ""omrA"";"	.	-
+chr	2976304	2976385	"gene_id ""G0-8882""; gene_name ""omrB"";"	.	-
+chr	3056851	3056991	"gene_id ""G0-8886""; gene_name ""sibC"";"	.	+
+chr	3067187	3067344	"gene_id ""G0-10701""; gene_name ""och5"";"	.	+
+chr	3194721	3194865	"gene_id ""G0-8913""; gene_name ""sibD"";"	.	-
+chr	3195097	3195240	"gene_id ""G0-10602""; gene_name ""sibE"";"	.	-
+chr	3350577	3350697	"gene_id ""G0-8871""; gene_name ""arcZ"";"	.	+
+chr	3354064	3354169	"gene_id ""G0-10702""; gene_name "" "";"	.	+
+chr	3367613	3367770	"gene_id ""G0-10703""; gene_name "" "";"	.	-
+chr	3580927	3581016	"gene_id ""G0-8872""; gene_name ""ryhB"";"	.	-
+chr	3648063	3648146	"gene_id ""G0-10751""; gene_name ""agrA"";"	.	+
+chr	3648294	3648377	"gene_id ""G0-10752""; gene_name ""agrB"";"	.	+
+chr	3657986	3658054	"gene_id ""G0-10694""; gene_name ""arrS"";"	.	-
+chr	3664864	3664968	"gene_id ""G0-8914""; gene_name ""gadY"";"	.	+
+chr	3853118	3853257	"gene_id ""G0-10201""; gene_name ""istR-2"";"	.	-
+chr	3853118	3853192	"gene_id ""G0-10202""; gene_name ""istR-1"";"	.	-
+chr	3986432	3986603	"gene_id ""G0-8873""; gene_name ""glmZ"";"	.	+
+chr	4001191	4001334	"gene_id ""G0-10704""; gene_name "" "";"	.	+
+chr	4019978	4020229	"gene_id ""G0-10737""; gene_name ""esrE"";"	.	+
+chr	4049899	4050007	"gene_id ""EG30098""; gene_name ""spf"";"	.	+
+chr	4051036	4051280	"gene_id ""G0-8874""; gene_name ""csrC"";"	.	+
+chr	4058171	4058242	"gene_id ""G0-10705""; gene_name "" "";"	.	+
+chr	4158285	4158394	"gene_id ""EG31116""; gene_name ""oxyS"";"	.	-
+chr	4190327	4190487	"gene_id ""G0-9388""; gene_name ""sroH"";"	.	-
+chr	4277927	4278066	"gene_id ""G0-8875""; gene_name ""ryjA"";"	.	-
+chr	4441225	4441330	"gene_id ""G0-10706""; gene_name "" "";"	.	-
+chr	4527977	4528066	"gene_id ""G0-10609""; gene_name ""ryjB"";"	.	+
+chr	4579835	4579911	"gene_id ""G0-10610""; gene_name ""symR"";"	.	+
