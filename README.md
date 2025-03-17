@@ -23,7 +23,6 @@ configuration, supporting code, and downstream RMarkdown files are included.
 Create the conda environments in the top level of `$WORKDIR`:
 
 ```bash
-conda env create -p env --file env.yml
 conda env create -p env-rilseq --file env-rilseq.yml
 conda env create -p env-r --file env-r.yml
 ```
@@ -39,14 +38,14 @@ formatted for RILseq analysis. The annotation file will contain the CDS
 features, 5UTR, 3UTR, AS (antisense) and IGR (intergenic regions) that are
 needed for RILseq analysis. The `workflows/annotation/config/config.yaml`
 configures this. From the `workflows/annotation` directory, activate the
-environment `env` and run the workflow. Either use a [snakemake
+environment `env-rilseq` and run the workflow. Either use a [snakemake
 profile](https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles)
 appropriate for your cluster, or run on a single machine (specifying the number
 of cores; here we use the placeholder `$CORES`)
 
 ```bash
 # in the workflows/annotation directory
-conda activate ../../env  # activate environment
+conda activate ../../env-rilseq  # activate environment
 snakemake --cores $CORES  # run workflow
 ```
 
@@ -88,6 +87,8 @@ a truncated form to stop as soon as those required files are created:
 
 ```bash
 # in workflows/rilseq-2016 or workflows/rilseq-2020:
+
+conda activate ../../env-rilseq # activate the environment, if not already done
 
 # optionally only run until trimmed fastq files:
 snakemake --cores $CORES -s Snakefile-rnaseq --until cutadapt
