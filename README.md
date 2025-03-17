@@ -91,10 +91,10 @@ a truncated form to stop as soon as those required files are created:
 conda activate ../../env-rilseq # activate the environment, if not already done
 
 # optionally only run until trimmed fastq files:
-snakemake --cores $CORES -s Snakefile-rnaseq --until cutadapt
+snakemake --cores $CORES -s Snakefile-rnaseq --until cutadapt --use-conda
 
 # or run entire workflow to get all QC
-snakemake --cores=$CORES -s Snakefile-rnaseq
+snakemake --cores=$CORES -s Snakefile-rnaseq --use-conda
 
 ```
 
@@ -111,7 +111,7 @@ a different environment activated (`env-rilseq`).
 # in workflows/rilseq-2016 or workflows/rilseq-2020:
 
 conda activate ../../env-rilseq
-snakemake --cores $CORES -s Snakefile-rilseq
+snakemake --cores $CORES -s Snakefile-rilseq --use-conda
 ```
 
 The main outputs of this workflow are the `all_fragments` and
