@@ -117,7 +117,7 @@ rule map_chimeric_fragments:
         'logs/map_chimeric_fragments_{sample}.log'
     output:
         'data/rnaseq_rilseq/{sample}/{sample}_all_fragments.txt'
-    threads: 8
+    threads: 64
     resources:
         mem_mb=128*1024,
         disk_mb=128*1024,
@@ -129,6 +129,7 @@ rule map_chimeric_fragments:
         '--dirout {params.dirout} '
         '-r '       # reverse stranded library
         '-t {input.gff} '
+        '--params_aln  "-t {threads} -N -M 0" '
         '{input.fa} '
         '{input.bam} '
         '> {output[0]} '
