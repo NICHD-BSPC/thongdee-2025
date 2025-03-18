@@ -239,7 +239,7 @@ rule plot_interactions:
     log:
         'logs/plot_interactions_{sample}.log'
     conda:
-        '../../env-circos.archive.yml'
+        '../rilseq/env-circos.yml'
     resources:
         mem_mb=1024,
         disk_mb=1024,
