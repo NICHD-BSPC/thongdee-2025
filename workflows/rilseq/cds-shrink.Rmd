@@ -24,7 +24,7 @@ knitr::opts_chunk$set(
                         # Error in lazyLoadDBinsertVariable(vars[i], from, datafile, ascii, compress,  :
                         # long vectors not supported yet: connections.c:6074
     cache.extra_file_dep_1 = file.info(
-      paste0('Summary_RILSeq_S-chimeras_unified_', subgroup_i, '.xlsx')
+      paste0('data/downstream/Summary_RILSeq_S-chimeras_unified_', subgroup_i, '.xlsx')
       )$mtime
     )
 ```
@@ -68,7 +68,7 @@ for (sz in c(50, 100)) {
 
 ```{r read_unified, results='asis'}
 # read unified chimera data xlsx
-fn <- paste0('Summary_RILSeq_S-chimeras_unified_', subgroup_i, '.xlsx')
+fn <- paste0('data/downstream/Summary_RILSeq_S-chimeras_unified_', subgroup_i, '.xlsx')
 cat(paste0('\n\n- [', fn, '](', fn, ')\n\n'))
 sig.unified <- list()
 sig.unified[['FLAG']] <- read.xlsx(fn, sheet=1)
@@ -125,7 +125,7 @@ searchQualifiedChimeras <- function(chimera_table, genomic_range, chimera_member
 ```{r match_chimeras, results='asis'}
 # for each shrink size
 for (sz in names(CDS_shrink)) {
-  fnout <- paste0('Summary_RILSeq_S-chimeras_unified_', subgroup, '_CDSshrink', sz, '.xlsx')
+  fnout <- paste0('data/downstream/Summary_RILSeq_S-chimeras_unified_', subgroup_i, '_CDSshrink', sz, '.xlsx')
   wb <- openxlsx::createWorkbook()
 
   #for FLAGged and noflagged sample,
