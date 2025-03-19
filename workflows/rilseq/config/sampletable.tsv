@@ -1,0 +1,5 @@
+samplename	group	Run	study_accession	sample_accession	experiment_accession	layout	subgroup
+Hfq-Flag_Iron_Limitation_CL_Repeat1	Hfq-Flag_Iron_Limitation_CL	ERR1025350	PRJEB10931	SAMEA3554113	ERX1104222	PE	Iron_Limitation_CL
+Hfq-Flag_Iron_Limitation_CL_Repeat2	Hfq-Flag_Iron_Limitation_CL	ERR1025351	PRJEB10931	SAMEA3554114	ERX1104223	PE	Iron_Limitation_CL
+MG1655_proQ-3XFLAG_hfq::cat_subLB-1	MG1655_proQ-3XFLAG_hfq::cat_subLB	SRR9096057	PRJNA543880	SAMN11788358	SRX5871053	PE	subLB
+MG1655_proQ-3XFLAG_hfq::cat_subLB-2	MG1655_proQ-3XFLAG_hfq::cat_subLB	SRR9096058	PRJNA543880	SAMN11788357	SRX5871054	PE	subLB
