@@ -20,8 +20,7 @@ knitr::opts_chunk$set(
     cache.lazy = FALSE, # to fix error:
                         # Error in lazyLoadDBinsertVariable(vars[i], from, datafile, ascii, compress,  :
                         # long vectors not supported yet: connections.c:6074
-    cache.extra_file_dep_1 = file.info('../config/sampletable.tsv')$mtime,
-    cache.extra_file_dep_2 = file.info('../data/rnaseq_rilseq/*/*.svg')$mtime
+    cache.extra_file_dep_1 = file.info(params$sampletable)$mtime
     )
 ```
 
@@ -56,8 +55,8 @@ knitr::kable(spt %>%
                 )
 
 # outputs
-out_fn <- paste0('Summary_RILSeq_S-chimeras_', subgroup_i, '.xlsx')
-out_fn_unified <- paste0('Summary_RILSeq_S-chimeras_unified_', subgroup_i, '.xlsx')
+out_fn <- paste0('data/downstream/Summary_RILSeq_S-chimeras_', subgroup_i, '.xlsx')
+out_fn_unified <- paste0('data/downstream/Summary_RILSeq_S-chimeras_unified_', subgroup_i, '.xlsx')
 ```
 
 # Number of chimeric fragments
@@ -66,7 +65,7 @@ out_fn_unified <- paste0('Summary_RILSeq_S-chimeras_unified_', subgroup_i, '.xls
 cnts <- list()
 
 for (sp in spt[['samplename']]) {
-  prfx <- paste0('../data/rnaseq_rilseq/', sp, '/', sp)
+  prfx <- paste0('data/rnaseq_rilseq/', sp, '/', sp)
   # total and mapped reads
   cnts[[sp]] <- total_mapped(paste0(prfx, '_R1.cutadapt.fastq_bwa.bam.rillibsize'))
   # all rilseq fragments
@@ -235,7 +234,7 @@ cat(paste0('\n\nAnnotation file is ', gtf_file, '.\n\n'))
 annotation <- import(gtf_file, format="GFF")
 
 get_fn <- function(sample.i, group) {
-  return(paste0('../data/rnaseq_rilseq/', sample.i, '/', sample.i, '_', group, '_fragments.txt'))
+  return(paste0('data/rnaseq_rilseq/', sample.i, '/', sample.i, '_', group, '_fragments.txt'))
   }
 
 sig.chimeras <- list()
