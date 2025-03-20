@@ -75,8 +75,8 @@ rule fastq_dump:
         is_paired=is_paired,
         sampletable=sampletable.set_index(sampletable.columns[0]),
     resources:
-        mem_mb=1024,
-        disk_mb=1024,
+        mem_mb=8*1024,
+        disk_mb=8*1024,
         runtime=120
     run:
         srr = params.sampletable.loc[wildcards.sample, 'Run']
@@ -277,8 +277,8 @@ rule generate_BED:
     log:
         'logs/generate_BED_{sample}.log'
     resources:
-        mem_mb=128*1024,
-        disk_mb=128*1024,
+        mem_mb=256*1024,
+        disk_mb=256*1024,
         runtime=120
     output:
         'data/rnaseq_rilseq/{sample}/{sample}_all.bed'
@@ -301,8 +301,8 @@ rule generate_BED_sig:
     log:
         'logs/generate_BED_{sample}.log'
     resources:
-        mem_mb=128*1024,
-        disk_mb=128*1024,
+        mem_mb=256*1024,
+        disk_mb=256*1024,
         runtime=120
     output:
         'data/rnaseq_rilseq/{sample}/{sample}_significant.bed'
@@ -327,8 +327,8 @@ rule prep_interactions_plot:
     log:
         'logs/prep_interactions_plot_{sample}.log'
     resources:
-        mem_mb=64*1024,
-        disk_mb=64*1024,
+        mem_mb=128*1024,
+        disk_mb=128*1024,
         runtime=120
     output:
         'data/rnaseq_rilseq/{sample}/{sample}_circos_plot.txt'
@@ -422,10 +422,13 @@ rule downstream_Rmd:
         sampletable=config['sampletable']
     output:
         html='data/downstream/{subgroup}_summary.html',
-        xlsx='data/downstream/Summary_RILSeq_S-chimeras_{subgroup}.xlsx',
         xlsx_unified='data/downstream/Summary_RILSeq_S-chimeras_unified_{subgroup}.xlsx',
     conda:
         'config/env-r.yml'
+    resources:
+        mem_mb=48*1024,
+        disk_mb=48*1024,
+        runtime=12*60
     log:
         'logs/downstream_Rmd_{subgroup}.log'
     shell:
@@ -447,7 +450,7 @@ rule downstream_cdsshrink:
         'logs/downstream_cdsshrink_{subgroup}.log'
     shell:
         'Rscript -e '
-        '''"rmarkdown::render('{input.rmd}', output_file='{output.html}', params=list(subgroup='{wildcards.subgroup}, gff='{input.gff}''))"'''
+        '''"rmarkdown::render('{input.rmd}', output_file='{output.html}', params=list(subgroup='{wildcards.subgroup}', gff='{input.gff}'))"'''
 
 
 
