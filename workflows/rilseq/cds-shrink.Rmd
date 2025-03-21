@@ -125,7 +125,7 @@ searchQualifiedChimeras <- function(chimera_table, genomic_range, chimera_member
 ```{r match_chimeras, results='asis'}
 # for each shrink size
 for (sz in names(CDS_shrink)) {
-  fnout <- paste0('Summary_RILSeq_S-chimeras_unified_', subgroup, '_CDSshrink', sz, '.xlsx')
+  fnout <- paste0('data/downstream/Summary_RILSeq_S-chimeras_unified_', subgroup, '_CDSshrink', sz, '.xlsx')
   wb <- openxlsx::createWorkbook()
 
   #for FLAGged and noflagged sample,
