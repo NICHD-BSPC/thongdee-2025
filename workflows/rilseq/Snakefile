@@ -75,8 +75,8 @@ rule fastq_dump:
         is_paired=is_paired,
         sampletable=sampletable.set_index(sampletable.columns[0]),
     resources:
-        mem_mb=1024,
-        disk_mb=1024,
+        mem_mb=8*1024,
+        disk_mb=8*1024,
         runtime=120
     run:
         srr = params.sampletable.loc[wildcards.sample, 'Run']
@@ -428,7 +428,7 @@ rule downstream_Rmd:
     resources:
         mem_mb=48*1024,
         disk_mb=48*1024,
-        runtime=4*120
+        runtime=12*60
     log:
         'logs/downstream_Rmd_{subgroup}.log'
     shell:
@@ -450,7 +450,7 @@ rule downstream_cdsshrink:
         'logs/downstream_cdsshrink_{subgroup}.log'
     shell:
         'Rscript -e '
-        '''"rmarkdown::render('{input.rmd}', output_file='{output.html}', params=list(subgroup='{wildcards.subgroup}, gff='{input.gff}''))"'''
+        '''"rmarkdown::render('{input.rmd}', output_file='{output.html}', params=list(subgroup='{wildcards.subgroup}', gff='{input.gff}'))"'''
 
 
 
