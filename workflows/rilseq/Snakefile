@@ -411,7 +411,8 @@ def get_downstream_input(wc):
     rillibsize=['data/rnaseq_rilseq/{}/{}_R1.cutadapt.fastq_bwa.bam.rillibsize'.format(sp, sp) for sp in samples]
     all_fragments=['data/rnaseq_rilseq/{}/{}_all_fragments.txt'.format(sp, sp) for sp in samples]
     sig_fragments=['data/rnaseq_rilseq/{}/{}_significant_fragments.txt'.format(sp, sp) for sp in samples]
-    return(rillibsize + all_fragments + sig_fragments)
+    unified=['data/rnaseq_rilseq/{}_unified/{}_unified_significant_fragments.txt'.format(sp, sp) for sp in samples]
+    return(rillibsize + all_fragments + sig_fragments + unified)
 
 
 rule downstream_Rmd:
