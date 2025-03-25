@@ -408,10 +408,11 @@ def get_downstream_input(wc):
     Given a subgroup, returns the txt file names of samples in the subgroup
     """
     samples = sampletable.loc[ sampletable['subgroup'] == wc.subgroup, 'samplename']
+    group = set(sampletable.loc[ sampletable['subgroup'] == wc.subgroup, 'group'])
     rillibsize=['data/rnaseq_rilseq/{}/{}_R1.cutadapt.fastq_bwa.bam.rillibsize'.format(sp, sp) for sp in samples]
     all_fragments=['data/rnaseq_rilseq/{}/{}_all_fragments.txt'.format(sp, sp) for sp in samples]
     sig_fragments=['data/rnaseq_rilseq/{}/{}_significant_fragments.txt'.format(sp, sp) for sp in samples]
-    unified=['data/rnaseq_rilseq/{}_unified/{}_unified_significant_fragments.txt'.format(sp, sp) for sp in samples]
+    unified=['data/rnaseq_rilseq/{}_unified/{}_unified_significant_fragments.txt'.format(gp, gp) for gp in group]
     return(rillibsize + all_fragments + sig_fragments + unified)
 
 
