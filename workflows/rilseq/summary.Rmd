@@ -279,24 +279,41 @@ for (x in spt[['group']] %>% unique()) {
 
 
 ```{r get_RNAnames_Unified, results='asis', cache=TRUE, dependson='read_chimeras_input2'}
-# see chunk above, but for unified files
+RNA1_cols <- c(
+  'RNA1.chromosome',
+  'Start.of.RNA1.first.read',
+  'Start.of.RNA1.last.read',
+  'RNA1.strand'
+)
+RNA2_cols <- c(
+  'RNA2.chromosome',
+  'Start.of.RNA2.last.read',
+  'Start.of.RNA2.first.read',
+  'RNA2.strand'
+)
+
+# the fragment df does not have Start.of.RNA{1,2}.last.read:
+RNA1_cols_fg <- c(
+  'RNA1.chromosome',
+  'Start.of.RNA1.first.read',
+  'Start.of.RNA1.first.read',
+  'RNA1.strand'
+)
+RNA2_cols_fg <- c(
+  'RNA2.chromosome',
+  'Start.of.RNA2.first.read',
+  'Start.of.RNA2.first.read',
+  'RNA2.strand'
+)
+
 RNA_names_unified <- list()
-RNA1_cols <- c('RNA1.chromosome', 'Start.of.RNA1.first.read',
-                                  'Start.of.RNA1.last.read',  'RNA1.strand')
-RNA2_cols <- c('RNA2.chromosome', 'Start.of.RNA2.last.read',
-                                  'Start.of.RNA2.first.read',  'RNA2.strand')
-                                  # the fragment df does not have Start.of.RNA#.aste.read:
-RNA1_cols_fg <- c('RNA1.chromosome', 'Start.of.RNA1.first.read',
-                                  'Start.of.RNA1.first.read',  'RNA1.strand')
-RNA2_cols_fg <- c('RNA2.chromosome', 'Start.of.RNA2.first.read',
-                                  'Start.of.RNA2.first.read',  'RNA2.strand')
-
-
 for (sample.i in names(sig.unified)){
-  print(sample.i)
   if (!is.null(nrow(sig.unified[[sample.i]])) & (nrow(sig.unified[[sample.i]]) > 1)) {
-    RNA_names_unified[[sample.i]] <- cbind(RNA1_name=rep("", nrow(sig.unified[[sample.i]])),
-                                 RNA2_name=rep("", nrow(sig.unified[[sample.i]])))
+    RNA_names_unified[[sample.i]] <- cbind(
+      RNA1_name=rep("", nrow(sig.unified[[sample.i]])),
+      RNA2_name=rep("", nrow(sig.unified[[sample.i]]))
+    )
+
 
     # for each chimera, get all associated reads 
     for(chi.i in 1:nrow(sig.unified[[sample.i]])) {
