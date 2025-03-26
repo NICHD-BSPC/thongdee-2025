@@ -278,48 +278,6 @@ for (x in spt[['group']] %>% unique()) {
 ```
 
 
-```{r get_RNAnames, results='asis', cache=TRUE, dependson='read_chimeras_input', eval=FALSE}
-# matching RNA names between significant fragments and all chimera fragemnts
-
-# to make GRanges, need those columns:
-RNA1_cols <- c('RNA1.chromosome', 'Start.of.RNA1.first.read',
-                                  'Start.of.RNA1.last.read',  'RNA1.strand')
-RNA2_cols <- c('RNA2.chromosome', 'Start.of.RNA2.last.read',
-                                  'Start.of.RNA2.first.read',  'RNA2.strand')
-                                  # the fragment df does not have Start.of.RNA#.aste.read:
-RNA1_cols_fg <- c('RNA1.chromosome', 'Start.of.RNA1.first.read',
-                                  'Start.of.RNA1.first.read',  'RNA1.strand')
-RNA2_cols_fg <- c('RNA2.chromosome', 'Start.of.RNA2.first.read',
-                                  'Start.of.RNA2.first.read',  'RNA2.strand')
-
-RNA_names <- list()
-min_ratio <- 0.7
-
-for (sample.i in spt[['samplename']]){
-#  print(sample.i)
-  if (!is.null(nrow(sig.chimeras[[sample.i]])) & (nrow(sig.chimeras[[sample.i]]) > 1)) {
-    RNA_names[[sample.i]] <- cbind(RNA1_name=rep("", nrow(sig.chimeras[[sample.i]])),
-                                 RNA2_name=rep("", nrow(sig.chimeras[[sample.i]])))
-
-    # for each chimera, get all associated reads 
-    for(chi.i in 1:nrow(sig.chimeras[[sample.i]])) {
-      target_chimera <- sig.chimeras[[sample.i]][chi.i,]
-      target_fragments <- getChimericFragmentsByGRanges(fragment.df = fragments[[sample.i]] %>%
-                                                                      filter(type == 'chimera'),
-                                                      chi.df = target_chimera)
-      # for those reads, get the names of the genes associated to RNA1
-      RNA1_gr <- convert_to_Granges(target_fragments[RNA1_cols_fg])
-      RNA1_names <- findGeneNamesByOverlaps(RNA1_gr, annotation, min_ratio)
-      # to RNA2
-      RNA2_gr <- convert_to_Granges(target_fragments[RNA2_cols_fg])
-      RNA2_names <- findGeneNamesByOverlaps(RNA2_gr, annotation, min_ratio)
-      # append to larger RNA_names list
-      RNA_names[[sample.i]][chi.i,] <- c(RNA1_names, RNA2_names)
-    }
-  }
-}
-```
-
 ```{r get_RNAnames_Unified, results='asis', cache=TRUE, dependson='read_chimeras_input2'}
 # see chunk above, but for unified files
 RNA_names_unified <- list()
