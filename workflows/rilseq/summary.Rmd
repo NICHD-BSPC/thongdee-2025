@@ -163,6 +163,10 @@ cat(paste0('\n\n**Link to output file:** [', out_fn, '](', out_fn, ').'))
 cat(paste0('\n\n**Link to unified output file:** [', out_fn_unified, '](', out_fn_unified, ').'))
 ```
 
+```{r}
+min_ratio <- 0.7
+```
+
 The RILseq output files `{sample}_all_fragments.txt`, containing all single and chimera fragments, and
 `{sample}_significant_fragments.txt`, containing significant interactions chimera fragments, are used to
 generate the `Summary_RILSeq_S-chimeras_{subgroup}.xlsx` file.
@@ -173,7 +177,7 @@ of the significant chimeric fragments RNA1 and RNA2. The annotation contains mRN
 antisense and intergenic regions. RNA1 and RNA2 of each significant chimera are assigned a feature when their
 supporting fragments start coordinate overlap with the feature. All features are reported in case of
 overlapping features. When the supporting fragments overlap with several features, they are all reported,
-unless the percentage of RNA reads overlapping with a gene is more than the min_ratio (0.7), in that case
+unless the percentage of RNA reads overlapping with a gene is more than the min_ratio (`r min_ratio`), in that case
 only the feature with the majority of reads is reported.
 
 The summary excel table contains a subset of the columns from the significant chimera files, and additional
@@ -329,8 +333,6 @@ RNA1_cols_fg <- c('RNA1.chromosome', 'Start.of.RNA1.first.read',
 RNA2_cols_fg <- c('RNA2.chromosome', 'Start.of.RNA2.first.read',
                                   'Start.of.RNA2.first.read',  'RNA2.strand')
 
-
-min_ratio <- 0.7
 
 for (sample.i in names(sig.unified)){
   print(sample.i)
