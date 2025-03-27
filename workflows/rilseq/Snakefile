@@ -151,8 +151,8 @@ rule cutadapt:
                 "--overlap 6 "
                 '-j {threads} '
                 '--minimum-length 25 '
-                "{input.fastq[0]} "
-                "{input.fastq[1]} "
+                "{input.r1} "
+                "{input.r2} "
                 "&> {log}"
             )
         else:
@@ -164,7 +164,7 @@ rule cutadapt:
                 "--overlap 6 "
                 '-j {threads} '
                 '--minimum-length 25 '
-                "{input.fastq[0]} "
+                "{input.r1} "
                 "&> {log}"
             )
 
