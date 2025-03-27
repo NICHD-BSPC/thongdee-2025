@@ -5,32 +5,38 @@ import yaml
 import tempfile
 import pandas as pd
 import numpy as np
+from Bio import SeqIO
+from snakemake import shell
+import gzip
+
 
 configfn = 'config/config.yaml'
 config = yaml.safe_load(open(configfn))
 
-sampletable = pd.read_csv('config/sampletable.tsv', sep='\t')
+sampletable = pd.read_csv(config['sampletable'], sep='\t')
 
-genome_fa = config['references_dir'] + '/' + \
-    config['organism'] + '/' + \
-    config['aligner']['tag'] + '/genome/bwa-mem/' + \
-    config['organism'] + \
-    '_' + \
-    config['aligner']['tag'] + \
-    '.fasta'
-
-genome_gff = '../references/references_data/ecoli/default/annotation/ecoli_default.gtf'
+# single read or paired-end
+is_paired = [(l.lower() == 'pe') | (l.lower() == 'paired') for l in sampletable.loc[:, 'layout']]
+if all(is_paired):
+    is_paired = True
+elif not any(is_pe):
+    is_paired = False
+else:
+    raise ValueError(f"Only a single layout (SE or PE) is supported.")
 
 
 # ----------------------------------------------------------------------------
 # TARGETS
 # ----------------------------------------------------------------------------
 
+
 rule targets:
     """
     Final targets to create
     """
     input:
+        expand('data/rnaseq_samples/{sample}/{sample}_R{n}.fastq.gz', n=[1, 2], sample=sampletable['samplename']),
+        # individual samples
         expand('data/rnaseq_rilseq/{sample}/{sample}_{frac}_fragments.txt',
                sample=sampletable['samplename'], frac=['all', 'significant']),
         expand('data/rnaseq_rilseq/{sample}/{sample}_{frac}.bed',
@@ -48,14 +54,11 @@ rule targets:
                sample=sampletable['group']+'_unified'),
         expand('data/rnaseq_rilseq/{sample}/{sample}_R1.cutadapt.fastq_bwa.bam.rillibsize',
                sample=sampletable['group']+'_unified'),
-        # counts
-        expand('data/rnaseq_rilseq/{sample}/{sample}_{sub}_subset.bam',
-               sample=sampletable['samplename'], sub = ['single', 'chimera']),
-        expand('data/rnaseq_rilseq/featurecounts_{sub}.txt',
-               sub = ['single', 'chimera']),
-
-
-
+        # downstream analysis
+        expand('data/downstream/{subgroup}_summary.html', 
+            subgroup=sampletable["subgroup"].unique()),
+        expand('data/downstream/{subgroup}_cds-shrink.html', 
+            subgroup=sampletable["subgroup"].unique()),
 
 
 # ----------------------------------------------------------------------------
@@ -63,13 +66,116 @@ rule targets:
 # ----------------------------------------------------------------------------
 
 
+rule fastq_dump:
+    output:
+        r1 = 'data/rnaseq_samples/{sample}/{sample}_R1.fastq.gz',
+        r2 = 'data/rnaseq_samples/{sample}/{sample}_R2.fastq.gz',
+    log:
+        'data/rnaseq_samples/{sample}/{sample}_R1.fastq-dump.fastq.gz.log'
+    params:
+        is_paired=is_paired,
+        sampletable=sampletable.set_index(sampletable.columns[0]),
+    resources:
+        mem_mb=8*1024,
+        disk_mb=8*1024,
+        runtime=120
+    run:
+        srr = params.sampletable.loc[wildcards.sample, 'Run']
+
+        if hasattr(params, "limit"):
+            limit = f'-X {params.limit}'
+        else:
+            limit = ""
+
+        # Two different paths depending on the layout. In both cases, we
+        # want to avoid creating the final output until the very end, to
+        # avoid incomplete downloads.
+        if params.is_paired:
+            # For PE we need to use --split-files, which also means using
+            # the slower --gzip
+            shell(
+                'fastq-dump '
+                '{srr} '
+                '--gzip '
+                '--split-files '
+                '{limit} '
+                '&> {log}'
+            )
+
+            # The filenames are predictable, so we can move them as needed.
+            shell('mv {srr}_1.fastq.gz {output[0]}')
+            shell('mv {srr}_2.fastq.gz {output[1]}')
+
+        else:
+            # For SE, we can use the faster stdout | gzip, and move it
+            # directly when done.
+            shell(
+                'fastq-dump '
+                '{srr} '
+                '-Z '
+                '{limit} '
+                '2> {log} | gzip -c > {output[0]}.tmp '
+                '&& mv {output[0]}.tmp {output[0]} '
+            )
+
+
+rule cutadapt:
+    """
+    Run cutadapt
+    """
+    input:
+        r1 = 'data/rnaseq_samples/{sample}/{sample}_R1.fastq.gz',
+        r2 = 'data/rnaseq_samples/{sample}/{sample}_R2.fastq.gz',
+    output:
+        r1 = 'data/rnaseq_samples/{sample}/{sample}_R1.cutadapt.fastq.gz',
+        r2 = 'data/rnaseq_samples/{sample}/{sample}_R2.cutadapt.fastq.gz',
+    log:
+        'data/rnaseq_samples/{sample}/{sample}_R1.cutadapt.fastq.gz.log'
+    threads: 6
+    params:
+        is_paired=is_paired,
+    resources:
+        mem_mb=2*1024,
+        runtime=120
+    run:
+
+        # NOTE: Change cutadapt params here
+        if params.is_paired:
+            shell(
+                "cutadapt "
+                "-o {output[0]} "
+                "-p {output[1]} "
+                "-a AGATCGGAAGAGCACACGTCTGAACTCCAGTCA "
+                "-A AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT "
+                "--nextseq-trim 20 "
+                "--overlap 6 "
+                '-j {threads} '
+                '--minimum-length 25 '
+                "{input.r1} "
+                "{input.r2} "
+                "&> {log}"
+            )
+        else:
+            shell(
+                "cutadapt "
+                "-o {output[0]} "
+                "-a AGATCGGAAGAGCACACGTCTGAACTCCAGTCA "
+                "--nextseq-trim 20 "
+                "--overlap 6 "
+                '-j {threads} '
+                '--minimum-length 25 '
+                "{input.r1} "
+                "&> {log}"
+            )
+
+
 rule map_single_fragments:
     input:
         r1 = 'data/rnaseq_samples/{sample}/{sample}_R1.cutadapt.fastq.gz',
         r2 = 'data/rnaseq_samples/{sample}/{sample}_R2.cutadapt.fastq.gz',
-        fa = genome_fa,
-        gff = genome_gff,
-        fai = genome_fa + '.bwt'
+        fa = config['references']['genome'],
+        gff = config['references']['annotation'],
+        fai = config['references']['bwi_index'],
     log:
         'logs/map_single_fragments_{sample}.log'
     output:
@@ -82,6 +188,8 @@ rule map_single_fragments:
         runtime=240
     params:
         dirout = 'data/rnaseq_rilseq/{sample}'
+    wildcard_constraints:
+        sample='|'.join(sampletable['samplename'])
     shell:
         'map_single_fragments.py  '
         '{input.fa} '
@@ -116,17 +224,17 @@ rule map_chimeric_fragments:
     input:
         bam = 'data/rnaseq_rilseq/{sample}/{sample}_R1.cutadapt.fastq_bwa.bam',
         bai = 'data/rnaseq_rilseq/{sample}/{sample}_R1.cutadapt.fastq_bwa.bam.bai',
-        fa = genome_fa,
-        gff = genome_gff
+        fa = config['references']['genome'],
+        gff = config['references']['annotation']
     log:
         'logs/map_chimeric_fragments_{sample}.log'
     output:
         'data/rnaseq_rilseq/{sample}/{sample}_all_fragments.txt'
-    threads: 8
+    threads: 64
     resources:
         mem_mb=128*1024,
         disk_mb=128*1024,
-        runtime=24*60
+        runtime=8*60
     params:
         dirout = 'data/rnaseq_rilseq/{sample}'
     shell:
@@ -134,6 +242,7 @@ rule map_chimeric_fragments:
         '--dirout {params.dirout} '
         '-r '       # reverse stranded library
         '-t {input.gff} '
+        '--params_aln="-t {threads} -N -M 0" '
         '{input.fa} '
         '{input.bam} '
         '> {output[0]} '
@@ -161,17 +270,16 @@ rule significant_regions:
         '> {output[0]} '
 
 
-
 rule generate_BED:
     input:
         reads='data/rnaseq_rilseq/{sample}/{sample}_all_fragments.txt',
-        fa=genome_fa,
+        fa=config['references']['genome'],
         bam='data/rnaseq_rilseq/{sample}/{sample}_R1.cutadapt.fastq_bwa.bam'
     log:
         'logs/generate_BED_{sample}.log'
     resources:
-        mem_mb=128*1024,
-        disk_mb=128*1024,
+        mem_mb=256*1024,
+        disk_mb=256*1024,
         runtime=120
     output:
         'data/rnaseq_rilseq/{sample}/{sample}_all.bed'
@@ -184,17 +292,18 @@ rule generate_BED:
         '{input.bam} '
         '> {output[0]}'
 
+
 rule generate_BED_sig:
     input:
         reads='data/rnaseq_rilseq/{sample}/{sample}_all_fragments.txt',
         summary='data/rnaseq_rilseq/{sample}/{sample}_significant_fragments.txt',
-        fa=genome_fa,
+        fa=config['references']['genome'],
         bam='data/rnaseq_rilseq/{sample}/{sample}_R1.cutadapt.fastq_bwa.bam'
     log:
         'logs/generate_BED_{sample}.log'
     resources:
-        mem_mb=128*1024,
-        disk_mb=128*1024,
+        mem_mb=256*1024,
+        disk_mb=256*1024,
         runtime=120
     output:
         'data/rnaseq_rilseq/{sample}/{sample}_significant.bed'
@@ -219,8 +328,8 @@ rule prep_interactions_plot:
     log:
         'logs/prep_interactions_plot_{sample}.log'
     resources:
-        mem_mb=64*1024,
-        disk_mb=64*1024,
+        mem_mb=128*1024,
+        disk_mb=128*1024,
         runtime=120
     output:
         'data/rnaseq_rilseq/{sample}/{sample}_circos_plot.txt'
@@ -230,16 +339,18 @@ rule prep_interactions_plot:
         '-s {input.summary} '
         '> {output[0]}'
 
+
 rule plot_interactions:
     """
     This plots the circos plot file
     """
     input:
         txt='data/rnaseq_rilseq/{sample}/{sample}_circos_plot.txt',
+        conf=config['circos_conf']
     log:
         'logs/plot_interactions_{sample}.log'
     conda:
-        '../../env-circos.archive.yml'
+        'config/env-circos.yml'
     resources:
         mem_mb=1024,
         disk_mb=1024,
@@ -247,9 +358,8 @@ rule plot_interactions:
     output:
         'data/rnaseq_rilseq/{sample}/{sample}_circos_plot.svg'
     shell:
-        # from ../rilseq/RILseq-master/data/E_coli_K12/plot_interactions.sh:
         'circos '
-        '-conf ../rilseq/RILseq-master/data/E_coli_K12/ver2/draw_links.conf '
+        '-conf {input.conf} '
         '-param links/link/file={input.txt} '
         '-outputfile {output[0]} '
 
@@ -260,6 +370,7 @@ def input_merge_bams(wc):
     """
     samples = sampletable.loc[ sampletable['group'] == wc.group, 'samplename']
     return(['data/rnaseq_rilseq/{}/{}_R1.cutadapt.fastq_bwa.bam'.format(sp, sp) for sp in samples])
+
 
 rule merge_bams:
     input:
@@ -275,6 +386,7 @@ rule merge_bams:
     shell:
         'samtools merge -o {output[0]} {input} '
         '&> {log[0]}'
+
 
 rule index_merged_bams:
     input:
@@ -292,93 +404,56 @@ rule index_merged_bams:
         '&> {log[0]}'
 
 
-
-# ---------------------------------------------------------
-# split BAM files by chimera or single
-# count reads in features with featureCounts
-# on ALL features
-# This is to make the Summary interaction with IP xlsx file
-# ---------------------------------------------------------
-
-rule get_read_ids:
+def get_downstream_input(wc):
     """
-    from the all_fragments file,
-    get the read IDs for chimera reads
-    and for single reads
+    Given a subgroup, returns the txt file names of samples in the subgroup
     """
+    samples = sampletable.loc[ sampletable['subgroup'] == wc.subgroup, 'samplename']
+    group = set(sampletable.loc[ sampletable['subgroup'] == wc.subgroup, 'group'])
+    rillibsize=['data/rnaseq_rilseq/{}/{}_R1.cutadapt.fastq_bwa.bam.rillibsize'.format(sp, sp) for sp in samples]
+    all_fragments=['data/rnaseq_rilseq/{}/{}_all_fragments.txt'.format(sp, sp) for sp in samples]
+    sig_fragments=['data/rnaseq_rilseq/{}/{}_significant_fragments.txt'.format(sp, sp) for sp in samples]
+    unified=['data/rnaseq_rilseq/{}_unified/{}_unified_significant_fragments.txt'.format(gp, gp) for gp in group]
+    return(rillibsize + all_fragments + sig_fragments + unified)
+
+
+rule downstream_Rmd:
     input:
-        'data/rnaseq_rilseq/{sample}/{sample}_all_fragments.txt'
-    log:
-        'logs/get_read_ids_{sample}.log'
+        rmd='summary.Rmd',
+        ril_inputs=get_downstream_input,
+        gff=config['references']['annotation'],
+        sampletable=config['sampletable']
     output:
-        single = 'data/rnaseq_rilseq/{sample}/{sample}_read_IDs_single.txt',
-        chimera = 'data/rnaseq_rilseq/{sample}/{sample}_read_IDs_chimera.txt',
+        html='data/downstream/{subgroup}_summary.html',
+        xlsx_unified='data/downstream/Summary_RILSeq_S-chimeras_unified_{subgroup}.xlsx',
+    conda:
+        'config/env-r.yml'
     resources:
-        mem_mb=32*1024,
-        disk_mb=32*1024,
-        runtime=240
-    run:
-        df = pd.read_table(input[0], sep='\t', header=None)
-        df.columns = ['chrom_R1', 'start_R1', 'strand_R1',
-                      'chrom_R2', 'start_R2', 'strand_R2',
-                      'read_ID', 'type']
-        df.loc[ df['type'] == 'single', 'read_ID'].to_csv(output.single, sep='\t', header=False, index=False)
-        df.loc[ df['type'] == 'chimera', 'read_ID'].to_csv(output.chimera, sep='\t', header=False, index=False)
-
-rule subset_bam:
-    """
-    using the single or chimera read IDs,
-    subset the BAM file
-    """
-    input:
-        bam = 'data/rnaseq_rilseq/{sample}/{sample}_R1.cutadapt.fastq_bwa.bam',
-        ids = 'data/rnaseq_rilseq/{sample}/{sample}_read_IDs_{sub}.txt'
+        mem_mb=48*1024,
+        disk_mb=48*1024,
+        runtime=12*60
     log:
-        'logs/subset_bam_{sample}_{sub}.log'
-    output:
-        'data/rnaseq_rilseq/{sample}/{sample}_{sub}_subset.bam'
-    resources:
-        mem_mb=32*1024,
-        disk_mb=32*1024,
-        runtime=240
+        'logs/downstream_Rmd_{subgroup}.log'
     shell:
-        'samtools view -N {input.ids} -o {output[0]} {input.bam}'
+        'Rscript -e '
+        '''"rmarkdown::render('{input.rmd}', output_file='{output.html}', params=list(subgroup='{wildcards.subgroup}', gff='{input.gff}', sampletable='{input.sampletable}'))"'''
 
-rule featurecounts_RILseq:
-    """
-    using either the chimera- or single-subseted BAM,
-    counts reads in any feature
-    """
+rule downstream_cdsshrink:
     input:
-        bam = expand('data/rnaseq_rilseq/{sample}/{sample}_{{sub}}_subset.bam', sample = sampletable['samplename']),
-        gff = genome_gff
-    log:
-        'logs/featurecounts_{sub}.log'
+        rmd='cds-shrink.Rmd',
+        xlsx_unified='data/downstream/Summary_RILSeq_S-chimeras_unified_{subgroup}.xlsx',
+        gff=config['references']['annotation'],
     output:
-        'data/rnaseq_rilseq/featurecounts_{sub}.txt'
-    resources:
-        mem_mb=32*1024,
-        disk_mb=32*1024,
-        runtime=240
-    wildcard_constraints:
-        sub="chimera|single"
+        html='data/downstream/{subgroup}_cds-shrink.html',
+        xlsx_50='data/downstream/Summary_RILSeq_S-chimeras_unified_{subgroup}_CDSshrink50.xlsx',
+        xlsx_100='data/downstream/Summary_RILSeq_S-chimeras_unified_{subgroup}_CDSshrink100.xlsx',
+    conda:
+        'config/env-r.yml'
+    log:
+        'logs/downstream_cdsshrink_{subgroup}.log'
     shell:
-        'featureCounts '
-        '-a {input.gff} '
-        '-t 3UTR,IGR,5UTR,AS,exon,TU,mRNA,other-ncRNA,cis_AS_with_trans_t ' # features to include
-        '-g gene_name ' # Specify attribute type in GTF annotation
-        '-s 2 '  # reverse stranded library
-        '-O '    # Assign reads to all their overlapping meta-features or features
-        '-M '    # Multi-mapping reads will also be counted
-        '--primary ' # Count primary alignments only
-        '--ignoreDup ' # Ignore duplicate reads in read counting. The whole read pair is ignored if one of the reads is a duplicate read for paired end data.
-        '-p '    # Specify that input data contain paired-end reads
-        '-P '    # Check validity of paired-end distance when counting read pairs. Use -d and -D to set thresholds
-        '-B '    # Only count read pairs that have both ends aligned.
-        '-o {output[0]} '
-        '{input.bam}'
-
-
+        'Rscript -e '
+        '''"rmarkdown::render('{input.rmd}', output_file='{output.html}', params=list(subgroup='{wildcards.subgroup}', gff='{input.gff}'))"'''
 
 
 

@@ -1,9 +1,15 @@
-# start from reference annotation
-patch0:
-  file: prepared-input/ecoli_default_minus_sRNA.gtf
-  description: 'reference annotation used in Adams et al., 2021 PMID: 33460557; contains mRNAs, rRNAs and tRNAs.'
+annotation:
+  # this is to build the RILseq-formated GFF file
+  # start from reference annotation
+  patch0:
+    file: prepared-input/ecoli_default_minus_sRNA.gtf
+    description: 'reference annotation used in Adams et al., 2021 PMID: 33460557; contains mRNAs, rRNAs and tRNAs.'
 
-# list of sRNAs to add
-patch1:
-  file: prepared-input/ecoli_sRNA.bed
-  description: 'list of known sRNAs in E. coli, manually prepared'
+  # list of sRNAs to add
+  patch1:
+    file: prepared-input/ecoli_sRNA.bed
+    description: 'list of known sRNAs in E. coli, manually prepared'
+
+genome:
+  # reference fasta file, to build BWA index on
+  url: 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna.gz'

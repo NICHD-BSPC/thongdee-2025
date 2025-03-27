@@ -1,0 +1,7 @@
+env-rilseq/
+.snakemake/
+data/
+logs/
+slurm-*.out
+*_cache/
+*.log
