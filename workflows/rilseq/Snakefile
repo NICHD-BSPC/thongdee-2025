@@ -35,6 +35,7 @@ rule targets:
     Final targets to create
     """
     input:
+        expand('data/rnaseq_samples/{sample}/{sample}_R{n}.fastq.gz', n=[1, 2], sample=sampletable['samplename']),
         # individual samples
         expand('data/rnaseq_rilseq/{sample}/{sample}_{frac}_fragments.txt',
                sample=sampletable['samplename'], frac=['all', 'significant']),
@@ -67,10 +68,10 @@ rule targets:
 
 rule fastq_dump:
     output:
-        r1 = 'data/rnaseq_samples/{sample}/{sample}_R1.cutadapt.fastq.gz',
-        r2 = 'data/rnaseq_samples/{sample}/{sample}_R2.cutadapt.fastq.gz',
+        r1 = 'data/rnaseq_samples/{sample}/{sample}_R1.fastq.gz',
+        r2 = 'data/rnaseq_samples/{sample}/{sample}_R2.fastq.gz',
     log:
-        'data/rnaseq_samples/{sample}/{sample}_R1.cutadapt.fastq.gz.log'
+        'data/rnaseq_samples/{sample}/{sample}_R1.fastq-dump.fastq.gz.log'
     params:
         is_paired=is_paired,
         sampletable=sampletable.set_index(sampletable.columns[0]),
@@ -123,8 +124,8 @@ rule cutadapt:
     Run cutadapt
     """
     input:
-        r1 = 'data/rnaseq_samples/{sample}/{sample}_R1.cutadapt.fastq.gz',
-        r2 = 'data/rnaseq_samples/{sample}/{sample}_R2.cutadapt.fastq.gz',
+        r1 = 'data/rnaseq_samples/{sample}/{sample}_R1.fastq.gz',
+        r2 = 'data/rnaseq_samples/{sample}/{sample}_R2.fastq.gz',
     output:
         r1 = 'data/rnaseq_samples/{sample}/{sample}_R1.cutadapt.fastq.gz',
         r2 = 'data/rnaseq_samples/{sample}/{sample}_R2.cutadapt.fastq.gz',
