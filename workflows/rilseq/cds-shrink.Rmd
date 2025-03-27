@@ -71,7 +71,10 @@ for (sz in c(50, 100)) {
 fn <- paste0('data/downstream/Summary_RILSeq_S-chimeras_unified_', subgroup_i, '.xlsx')
 cat(paste0('\n\n- [', fn, '](', fn, ')\n\n'))
 sig.unified <- list()
-sig.unified[['FLAG']] <- read.xlsx(fn, sheet=1)
+sh_names <- getSheetNames(fn)
+for (i in range(1:length(sh_names))) {
+  sig.unified[[sh_names[[i]]]] <- read.xlsx(fn, sheet=i)
+}
 #sig.unified[['noflag']] <- read.xlsx(fn, sheet=2)
 ```
 
