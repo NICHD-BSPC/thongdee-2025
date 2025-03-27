@@ -75,7 +75,6 @@ sh_names <- getSheetNames(fn)
 for (i in range(1:length(sh_names))) {
   sig.unified[[sh_names[[i]]]] <- read.xlsx(fn, sheet=i)
 }
-#sig.unified[['noflag']] <- read.xlsx(fn, sheet=2)
 ```
 
 ```{r funcs}
